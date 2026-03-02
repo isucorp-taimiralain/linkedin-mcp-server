@@ -1,7 +1,7 @@
 {
   "name": "@dev-hitesh-gupta/linkedin-mcp-server",
   "version": "1.0.0",
-  "description": "LinkedIn MCP Server — post, share articles, and manage your LinkedIn profile through Claude using the official LinkedIn API and OAuth 2.0. 6 tools for posting, profile access, and connection management.",
+  "description": "LinkedIn MCP Server — post, share articles, publish image posts, and manage your LinkedIn profile through Claude using the official LinkedIn API and OAuth 2.0. 7 tools for posting, profile access, and connection management.",
   "type": "module",
   "main": "dist/index.js",
   "bin": {

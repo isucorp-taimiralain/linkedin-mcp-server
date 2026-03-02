@@ -6,15 +6,16 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org)
 
-**6 tools** for creating posts, sharing articles, managing your profile, and more — powered by the official LinkedIn REST API with OAuth 2.0.
+**7 tools** for creating posts, sharing articles, posting with images, managing your profile, and more — powered by the official LinkedIn REST API with OAuth 2.0.
 
 ## Tools
 
 | Tool | Description | Permissions Required |
 |------|-------------|---------------------|
 | `linkedin_get_profile` | Get your LinkedIn profile information | Basic (OpenID) |
-| `linkedin_create_post` | Create a text post (up to 3000 chars) | Share on LinkedIn |
-| `linkedin_create_article_post` | Share an article link with commentary | Share on LinkedIn |
+| `linkedin_create_post` | Create a text post (up to 3000 chars) with hashtags at the end | Share on LinkedIn |
+| `linkedin_create_article_post` | Share an article link with commentary and hashtags at the end | Share on LinkedIn |
+| `linkedin_create_image_post` | Create a single-image post (local path, URL, search query, or generated image) | Share on LinkedIn |
 | `linkedin_get_posts` | Get your recent posts | Share on LinkedIn ⚠️ |
 | `linkedin_delete_post` | Delete a post by ID | Share on LinkedIn |
 | `linkedin_get_connections_count` | Get your total connection count | ⚠️ May need partner access |
@@ -109,6 +110,14 @@ Post to LinkedIn: "Just shipped a new open-source MCP server for LinkedIn automa
 ```
 Share this article on LinkedIn: https://example.com/article
 My commentary: "Great read on the future of AI tooling"
+```
+
+**Create an image post:**
+```
+Create a LinkedIn image post:
+Text: "From messy component to scalable architecture"
+imageSearchQuery: "software architecture diagram clean code"
+hashtags: ["SoftwareArchitecture", "Refactoring", "CleanCode"]
 ```
 
 **Control visibility:**

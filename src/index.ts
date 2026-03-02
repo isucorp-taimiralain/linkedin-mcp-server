@@ -35,6 +35,12 @@ const tools = [
           enum: ["PUBLIC", "CONNECTIONS", "LOGGED_IN"],
           description: "Post visibility: PUBLIC (default), CONNECTIONS, or LOGGED_IN",
         },
+        hashtags: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Optional hashtags. If omitted, hashtags are auto-generated and appended at the end of the post.",
+        },
       },
       required: ["text"],
     },
@@ -67,8 +73,62 @@ const tools = [
           enum: ["PUBLIC", "CONNECTIONS", "LOGGED_IN"],
           description: "Post visibility: PUBLIC (default), CONNECTIONS, or LOGGED_IN",
         },
+        hashtags: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Optional hashtags. If omitted, hashtags are auto-generated and appended at the end of the post.",
+        },
       },
       required: ["text", "articleUrl"],
+    },
+  },
+  {
+    name: "linkedin_create_image_post",
+    description:
+      "Create a LinkedIn post with exactly one image. Supports local file path, public image URL, internet image search query, or AI image generation prompt.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        text: {
+          type: "string",
+          description: "Commentary for the image post (hashtags will be appended at the end)",
+        },
+        imagePath: {
+          type: "string",
+          description: "Local image path (.jpg, .jpeg, .png, .gif, .webp)",
+        },
+        imageUrl: {
+          type: "string",
+          description: "Public image URL",
+        },
+        imageSearchQuery: {
+          type: "string",
+          description:
+            "Search query to fetch a related internet image. Use this instead of imagePath/imageUrl.",
+        },
+        imageGenerationPrompt: {
+          type: "string",
+          description:
+            "Prompt to generate an image from AI. Use this instead of imagePath/imageUrl/imageSearchQuery.",
+        },
+        altText: {
+          type: "string",
+          description: "Optional accessibility text for the image",
+        },
+        hashtags: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Optional hashtags. If omitted, hashtags are auto-generated and appended at the end of the post.",
+        },
+        visibility: {
+          type: "string",
+          enum: ["PUBLIC", "CONNECTIONS", "LOGGED_IN"],
+          description: "Post visibility: PUBLIC (default), CONNECTIONS, or LOGGED_IN",
+        },
+      },
+      required: ["text"],
     },
   },
   {
@@ -175,9 +235,10 @@ async function main() {
         }
 
         case "linkedin_create_post": {
-          const { text, visibility } = args as {
+          const { text, visibility, hashtags } = args as {
             text: string;
             visibility?: "PUBLIC" | "CONNECTIONS" | "LOGGED_IN";
+            hashtags?: string[];
           };
 
           if (!text || text.trim().length === 0) {
@@ -188,7 +249,11 @@ async function main() {
             throw new Error("Post text exceeds 3000 character limit");
           }
 
-          const result = await client.createPost(text, visibility || "PUBLIC");
+          if (hashtags && (!Array.isArray(hashtags) || hashtags.some((tag) => typeof tag !== "string"))) {
+            throw new Error("hashtags must be an array of strings");
+          }
+
+          const result = await client.createPost(text, visibility || "PUBLIC", hashtags);
           return {
             content: [
               {
@@ -200,12 +265,13 @@ async function main() {
         }
 
         case "linkedin_create_article_post": {
-          const { text, articleUrl, title, description, visibility } = args as {
+          const { text, articleUrl, title, description, visibility, hashtags } = args as {
             text: string;
             articleUrl: string;
             title?: string;
             description?: string;
             visibility?: "PUBLIC" | "CONNECTIONS" | "LOGGED_IN";
+            hashtags?: string[];
           };
 
           if (!text || text.trim().length === 0) {
@@ -216,18 +282,79 @@ async function main() {
             throw new Error("Invalid article URL");
           }
 
+          if (hashtags && (!Array.isArray(hashtags) || hashtags.some((tag) => typeof tag !== "string"))) {
+            throw new Error("hashtags must be an array of strings");
+          }
+
           const result = await client.createArticlePost(
             text,
             articleUrl,
             title,
             description,
-            visibility || "PUBLIC"
+            visibility || "PUBLIC",
+            hashtags
           );
           return {
             content: [
               {
                 type: "text",
                 text: `Article post created successfully!\nPost ID: ${result.id}\nArticle: ${articleUrl}\nVisibility: ${visibility || "PUBLIC"}`,
+              },
+            ],
+          };
+        }
+
+        case "linkedin_create_image_post": {
+          const {
+            text,
+            imagePath,
+            imageUrl,
+            imageSearchQuery,
+            imageGenerationPrompt,
+            altText,
+            visibility,
+            hashtags,
+          } = args as {
+            text: string;
+            imagePath?: string;
+            imageUrl?: string;
+            imageSearchQuery?: string;
+            imageGenerationPrompt?: string;
+            altText?: string;
+            visibility?: "PUBLIC" | "CONNECTIONS" | "LOGGED_IN";
+            hashtags?: string[];
+          };
+
+          if (!text || text.trim().length === 0) {
+            throw new Error("Post text cannot be empty");
+          }
+
+          if (hashtags && (!Array.isArray(hashtags) || hashtags.some((tag) => typeof tag !== "string"))) {
+            throw new Error("hashtags must be an array of strings");
+          }
+
+          if (altText && typeof altText !== "string") {
+            throw new Error("altText must be a string");
+          }
+
+          const result = await client.createImagePost({
+            text,
+            visibility: visibility || "PUBLIC",
+            hashtags,
+            imagePath,
+            imageUrl,
+            imageSearchQuery,
+            imageGenerationPrompt,
+            altText,
+          });
+
+          return {
+            content: [
+              {
+                type: "text",
+                text:
+                  `Image post created successfully!\nPost ID: ${result.id}\nVisibility: ${visibility || "PUBLIC"}` +
+                  (result.message ? `\nImage source: ${result.message}` : ""),
               },
             ],
           };

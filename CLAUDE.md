@@ -9,11 +9,12 @@ MCP server for LinkedIn posting and profile management using LinkedIn's OAuth 2.
 - LinkedIn REST API
 - OAuth 2.0 authentication
 
-## Available Tools (6 total)
+## Available Tools (7 total)
 
 - `linkedin_get_profile` - Get authenticated user's profile
 - `linkedin_create_post` - Create text post (max 3000 chars)
 - `linkedin_create_article_post` - Share article with commentary
+- `linkedin_create_image_post` - Create single-image post (local path, URL, internet search, or generated image)
 - `linkedin_get_posts` - Get recent posts
 - `linkedin_delete_post` - Delete a post
 - `linkedin_get_connections_count` - Get connection count
