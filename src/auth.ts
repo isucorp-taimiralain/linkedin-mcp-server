@@ -23,6 +23,7 @@ export interface Credentials {
   client_id: string;
   client_secret: string;
   redirect_uri?: string;
+  google_api_key?: string;
 }
 
 export interface TokenData {
@@ -94,11 +95,16 @@ export function getAccessToken(): string | null {
 
   // Check if token is expired
   if (token.expires_at && Date.now() >= token.expires_at) {
-    console.error("Token expired. Please run 'npm run auth' to re-authenticate.");
+    console.error("Token expired. Please run 'pnpm auth' to re-authenticate.");
     return null;
   }
 
   return token.access_token;
+}
+
+export function getGoogleApiKey(): string | null {
+  const credentials = loadCredentials();
+  return credentials?.google_api_key ?? null;
 }
 
 export function getUserInfo(): { sub?: string; name?: string; email?: string } | null {

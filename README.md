@@ -61,7 +61,7 @@ LinkedIn requires creating a Developer App to get OAuth credentials. This takes 
 
 ```bash
 # Install globally
-npm install -g @dev-hitesh-gupta/linkedin-mcp-server
+pnpm add -g @dev-hitesh-gupta/linkedin-mcp-server
 
 # Create config directory and add your credentials
 mkdir -p ~/.linkedin-mcp
@@ -81,7 +81,7 @@ Your access token is saved to `~/.linkedin-mcp/token.json` and valid for 60 days
 ### Step 5 — Add to Claude Code
 
 ```bash
-claude mcp add linkedin -- npx @dev-hitesh-gupta/linkedin-mcp-server
+claude mcp add linkedin -- pnpm dlx @dev-hitesh-gupta/linkedin-mcp-server
 ```
 
 Or manually in your Claude config (`~/.claude/claude_desktop_config.json`):
@@ -127,6 +127,82 @@ hashtags: ["SoftwareArchitecture", "Refactoring", "CleanCode"]
 | `PUBLIC` | Everyone on LinkedIn (default) |
 | `CONNECTIONS` | Your 1st-degree connections only |
 | `LOGGED_IN` | Any logged-in LinkedIn member |
+
+---
+
+## Automated Niche Posting (Every 3 Days)
+
+The project now includes an auto-post workflow that:
+
+- Finds relevant trending articles for your niche from public news feeds
+- Scores and selects the best recent candidate
+- Avoids reposting the same article (history file)
+- Publishes one LinkedIn article post automatically
+
+### 1) Configure your niche
+
+Run this once:
+
+```bash
+pnpm build
+pnpm autopost:dry-run
+```
+
+On first run, a template config is created at:
+
+`~/.linkedin-mcp/automation.json`
+
+Fill it with your niche and keywords, for example:
+
+```json
+{
+  "niche": "AI Automation For SMB Operations",
+  "keywords": [
+    "ai automation",
+    "workflow automation",
+    "small business operations"
+  ],
+  "audience": "Founders and operations leaders",
+  "postLanguage": "es",
+  "visibility": "PUBLIC",
+  "hashtags": ["AI", "Automation", "BusinessGrowth"],
+  "maxArticleAgeHours": 96,
+  "itemsPerKeyword": 8,
+  "market": "en-US"
+}
+```
+
+### 2) Run a single automatic post
+
+```bash
+pnpm autopost
+```
+
+### 3) Install cron (every 3 days)
+
+Installs a managed cron entry that runs every 3 days at 09:00:
+
+```bash
+pnpm autopost:cron:install
+```
+
+Custom time:
+
+```bash
+pnpm autopost:cron:install -- --hour=9 --minute=30
+```
+
+Remove cron entry:
+
+```bash
+pnpm autopost:cron:remove
+```
+
+Automation files:
+
+- Config: `~/.linkedin-mcp/automation.json`
+- History: `~/.linkedin-mcp/automation-history.json`
+- Cron logs: `~/.linkedin-mcp/autopost.log`
 
 ---
 

@@ -86,7 +86,7 @@ const tools = [
   {
     name: "linkedin_create_image_post",
     description:
-      "Create a LinkedIn post with exactly one image. Supports local file path, public image URL, internet image search query, or AI image generation prompt.",
+      "Create a LinkedIn post with exactly one image. Supports local file path, public image URL, internet image search query, or AI image generation prompt tuned for photorealistic results.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -110,7 +110,7 @@ const tools = [
         imageGenerationPrompt: {
           type: "string",
           description:
-            "Prompt to generate an image from AI. Use this instead of imagePath/imageUrl/imageSearchQuery.",
+            "Prompt to generate a photorealistic AI image (text overlays/logos are discouraged by default). Use this instead of imagePath/imageUrl/imageSearchQuery.",
         },
         altText: {
           type: "string",
@@ -192,7 +192,7 @@ async function main() {
     const accessToken = getAccessToken();
     if (!accessToken) {
       throw new Error(
-        `Not authenticated. Please run 'npm run auth' in the linkedin-mcp-server directory to authenticate.\n` +
+        `Not authenticated. Please run 'pnpm auth' in the linkedin-mcp-server directory to authenticate.\n` +
           `Config directory: ${getConfigDir()}`
       );
     }

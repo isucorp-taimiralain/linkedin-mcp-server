@@ -22,6 +22,9 @@ const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
 };
 
 const SUPPORTED_IMAGE_MIME_TYPES = new Set<string>(Object.values(IMAGE_MIME_BY_EXTENSION));
+const GENERATED_IMAGE_MODELS = ["flux", "turbo"] as const;
+const GENERATED_IMAGE_WIDTH = 1600;
+const GENERATED_IMAGE_HEIGHT = 900;
 
 const COMMON_STOPWORDS = new Set<string>([
   "this",
@@ -92,11 +95,13 @@ export interface ImagePostOptions {
   imageUrl?: string;
   imageSearchQuery?: string;
   imageGenerationPrompt?: string;
+  imageGooglePrompt?: string;
+  googleApiKey?: string;
   altText?: string;
 }
 
 interface PreparedImage {
-  bytes: Uint8Array;
+  bytes: ArrayBuffer;
   contentType: string;
   source: string;
 }
@@ -238,8 +243,9 @@ export class LinkedInClient {
   }
 
   private async loadLocalImage(imagePath: string): Promise<PreparedImage> {
-    const bytes = await readFile(imagePath);
-    if (bytes.length === 0) {
+    const raw = await readFile(imagePath);
+    const bytes: ArrayBuffer = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);
+    if (bytes.byteLength === 0) {
       throw new Error(`Image file is empty: ${imagePath}`);
     }
 
@@ -267,8 +273,8 @@ export class LinkedInClient {
       throw new Error(`Failed to download image: ${response.status} (${imageUrl})`);
     }
 
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.length === 0) {
+    const bytes: ArrayBuffer = await response.arrayBuffer();
+    if (bytes.byteLength === 0) {
       throw new Error(`Downloaded image is empty (${imageUrl})`);
     }
 
@@ -295,20 +301,9 @@ export class LinkedInClient {
       throw new Error("imageSearchQuery cannot be empty");
     }
 
-    const unsplashUrl = `https://source.unsplash.com/1600x900/?${encodeURIComponent(normalizedQuery)}`;
-    try {
-      return await this.downloadImageFromUrl(
-        unsplashUrl,
-        `internet search query "${normalizedQuery}" (Unsplash)`
-      );
-    } catch {
-      const flickrQuery = normalizedQuery.replace(/\s+/g, ",");
-      const loremFlickrUrl = `https://loremflickr.com/1600/900/${encodeURIComponent(flickrQuery)}`;
-      return this.downloadImageFromUrl(
-        loremFlickrUrl,
-        `internet search query "${normalizedQuery}" (LoremFlickr)`
-      );
-    }
+    // We no longer use stock image APIs (Unsplash, LoremFlickr).
+    // Always fall back to AI generation for searches if explicitly called.
+    return this.generateImageFromPrompt(query);
   }
 
   private async generateImageFromPrompt(prompt: string): Promise<PreparedImage> {
@@ -317,13 +312,155 @@ export class LinkedInClient {
       throw new Error("imageGenerationPrompt cannot be empty");
     }
 
-    const generatedImageUrl =
-      `https://image.pollinations.ai/prompt/${encodeURIComponent(normalizedPrompt)}` +
-      "?width=1600&height=900&nologo=true";
-    return this.downloadImageFromUrl(
-      generatedImageUrl,
-      `generated image from prompt "${normalizedPrompt}"`
-    );
+    let lastError: unknown = null;
+
+    // 1. DALL-E proxy (Primary free image generator)
+    try {
+      const dalleResponse = await fetch("https://apis.scrimba.com/openai/v1/images/generations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: `Abstract digital art, ${normalizedPrompt}, dark background, neon colors, no text, no watermark`,
+          n: 1,
+          size: "1024x1024",
+        }),
+      });
+
+      if (dalleResponse.ok) {
+        const dalleData = await dalleResponse.json();
+        const imageUrl = dalleData.data?.[0]?.url;
+        if (imageUrl) {
+          return await this.downloadImageFromUrl(
+            imageUrl,
+            `DALL-E image generation — prompt: "${normalizedPrompt}"`
+          );
+        }
+      } else {
+        lastError = new Error(`DALL-E proxy error: ${dalleResponse.status}`);
+      }
+    } catch (dalleError) {
+      console.error("DALL-E proxy failed", dalleError);
+      lastError = dalleError;
+    }
+
+    // 2. Fallback to Pollinations.ai if DALL-E proxy is down
+    for (const model of GENERATED_IMAGE_MODELS) {
+      const params = new URLSearchParams({
+        width: String(GENERATED_IMAGE_WIDTH),
+        height: String(GENERATED_IMAGE_HEIGHT),
+        nologo: "true",
+        private: "true",
+        model,
+      });
+      const generatedImageUrl =
+        `https://image.pollinations.ai/prompt/${encodeURIComponent(normalizedPrompt)}` +
+        `?${params.toString()}`;
+
+      try {
+        return await this.downloadImageFromUrl(
+          generatedImageUrl,
+          `generated image from prompt "${normalizedPrompt}" (${model})`
+        );
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (lastError instanceof Error) {
+      throw new Error(`Failed to generate image from prompt: ${lastError.message}`);
+    }
+
+    throw new Error("Failed to generate image from prompt");
+  }
+
+  private async generateImageFromGoogleImagen(
+    prompt: string,
+    googleApiKey: string
+  ): Promise<PreparedImage> {
+    const normalizedPrompt = prompt.trim();
+    if (!normalizedPrompt) {
+      throw new Error("imageGooglePrompt cannot be empty");
+    }
+    if (!googleApiKey.trim()) {
+      throw new Error("Google API key is required for imageGooglePrompt");
+    }
+
+    /**
+     * Gemini image generation models (free tier via generateContent API).
+     * These models return inline image data in the response.
+     */
+    const models = [
+      "gemini-2.0-flash-exp-image-generation",
+      "gemini-2.5-flash-image",
+    ] as const;
+
+    interface GeminiPart {
+      text?: string;
+      inlineData?: { mimeType: string; data: string };
+    }
+    interface GeminiResponse {
+      candidates?: Array<{ content?: { parts?: GeminiPart[] } }>;
+      error?: { message?: string };
+    }
+
+    let lastError: unknown = null;
+
+    for (const model of models) {
+      const url =
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent` +
+        `?key=${encodeURIComponent(googleApiKey)}`;
+
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: normalizedPrompt }] }],
+            generationConfig: {
+              responseModalities: ["IMAGE", "TEXT"],
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Google Gemini API ${response.status}: ${errorText}`);
+        }
+
+        const data = (await response.json()) as GeminiResponse;
+
+        if (data.error?.message) {
+          throw new Error(`Google Gemini error: ${data.error.message}`);
+        }
+
+        const parts = data.candidates?.[0]?.content?.parts ?? [];
+        const imagePart = parts.find((p) => p.inlineData?.data);
+
+        if (!imagePart?.inlineData?.data) {
+          throw new Error(`${model} returned no image data`);
+        }
+
+        const contentType = imagePart.inlineData.mimeType || "image/png";
+        const binaryString = atob(imagePart.inlineData.data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        return {
+          bytes: bytes.buffer,
+          contentType,
+          source: `Google Gemini image generation (${model}) — prompt: "${normalizedPrompt}"`,
+        };
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (lastError instanceof Error) {
+      throw new Error(`Google image generation failed: ${lastError.message}`);
+    }
+    throw new Error("Google image generation failed");
   }
 
   private async resolveImageForPost(
@@ -333,16 +470,18 @@ export class LinkedInClient {
       imageUrl?: string;
       imageSearchQuery?: string;
       imageGenerationPrompt?: string;
+      imageGooglePrompt?: string;
+      googleApiKey?: string;
     }
   ): Promise<PreparedImage> {
-    const { imagePath, imageUrl, imageSearchQuery, imageGenerationPrompt } = options;
-    const selectedSourceCount = [imagePath, imageUrl, imageSearchQuery, imageGenerationPrompt].filter(
+    const { imagePath, imageUrl, imageSearchQuery, imageGenerationPrompt, imageGooglePrompt, googleApiKey } = options;
+    const selectedSourceCount = [imagePath, imageUrl, imageSearchQuery, imageGenerationPrompt, imageGooglePrompt].filter(
       (value) => Boolean(value && value.trim().length > 0)
     ).length;
 
     if (selectedSourceCount > 1) {
       throw new Error(
-        "Provide only one image source: imagePath, imageUrl, imageSearchQuery, or imageGenerationPrompt"
+        "Provide only one image source: imagePath, imageUrl, imageSearchQuery, imageGenerationPrompt, or imageGooglePrompt"
       );
     }
 
@@ -356,6 +495,13 @@ export class LinkedInClient {
 
     if (imageSearchQuery && imageSearchQuery.trim().length > 0) {
       return this.downloadImageFromSearchQuery(imageSearchQuery);
+    }
+
+    if (imageGooglePrompt && imageGooglePrompt.trim().length > 0) {
+      if (!googleApiKey || !googleApiKey.trim()) {
+        throw new Error("googleApiKey is required when using imageGooglePrompt");
+      }
+      return this.generateImageFromGoogleImagen(imageGooglePrompt, googleApiKey);
     }
 
     if (imageGenerationPrompt && imageGenerationPrompt.trim().length > 0) {
@@ -407,7 +553,7 @@ export class LinkedInClient {
 
   private async uploadImageToLinkedIn(
     uploadUrl: string,
-    bytes: Uint8Array,
+    bytes: ArrayBuffer,
     contentType: string
   ): Promise<void> {
     let response = await fetch(uploadUrl, {
@@ -723,6 +869,8 @@ export class LinkedInClient {
       imageUrl,
       imageSearchQuery,
       imageGenerationPrompt,
+      imageGooglePrompt,
+      googleApiKey,
       altText,
     } = options;
 
@@ -733,6 +881,8 @@ export class LinkedInClient {
       imageUrl,
       imageSearchQuery,
       imageGenerationPrompt,
+      imageGooglePrompt,
+      googleApiKey,
     });
 
     const { asset, uploadUrl } = await this.registerImageUpload(memberUrn);
