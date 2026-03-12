@@ -390,8 +390,8 @@ export class LinkedInClient {
      * These models return inline image data in the response.
      */
     const models = [
-      "gemini-2.0-flash-exp-image-generation",
       "gemini-2.5-flash-image",
+      "gemini-3.1-flash-image-preview",
     ] as const;
 
     interface GeminiPart {

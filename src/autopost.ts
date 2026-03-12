@@ -745,7 +745,7 @@ async function callGeminiText(
 
     try {
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(googleApiKey)}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(googleApiKey)}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1057,8 +1057,25 @@ export async function runAutoPostJob(): Promise<AutoPostRunResult> {
   };
 
   async function tryWithFallback() {
-    // ── Attempt 1: DALL-E & Pollinations.ai AI generation ──
+    // ── Attempt 1: Google Gemini (if key provided) ──
+    if (prepared.googleApiKey) {
+      try {
+        console.error("  Calling Google Gemini for image...");
+        const result = await client.createImagePost({
+          ...basePost,
+          imageGooglePrompt: prepared.imageSearchQuery,
+          googleApiKey: prepared.googleApiKey,
+        });
+        return result;
+      } catch (geminiErr: unknown) {
+        const reason = geminiErr instanceof Error ? geminiErr.message : String(geminiErr);
+        console.error(`  Google Gemini image failed (${reason}). Falling back to Pollinations...`);
+      }
+    }
+
+    // ── Attempt 2: DALL-E & Pollinations.ai AI generation ──
     try {
+      console.error("  Calling Pollinations for image fallback...");
       // Append random seed to guarantee variety in case it falls back to Pollinations
       const promptWithSeed = `${prepared.imageSearchQuery} --seed ${Math.floor(Math.random() * 1000000)}`;
       const result = await client.createImagePost({
@@ -1068,26 +1085,8 @@ export async function runAutoPostJob(): Promise<AutoPostRunResult> {
       return result;
     } catch (pollinationsErr: unknown) {
       const reason = pollinationsErr instanceof Error ? pollinationsErr.message : String(pollinationsErr);
-      console.error(`DALL-E/Pollinations failed (${reason}), trying Google Gemini…`);
+      throw new Error(`All AI image generation providers failed. Last error: ${reason}`);
     }
-
-    // ── Attempt 2: Google Gemini (if key provided) ──
-    if (prepared.googleApiKey) {
-      try {
-        const result = await client.createImagePost({
-          ...basePost,
-          imageGooglePrompt: prepared.imageSearchQuery,
-          googleApiKey: prepared.googleApiKey,
-        });
-        return result;
-      } catch (geminiErr: unknown) {
-        const reason = geminiErr instanceof Error ? geminiErr.message : String(geminiErr);
-        console.error(`Google Gemini image failed (${reason}). All AI image providers failed.`);
-        throw new Error(`All AI image generation providers failed. Last error: ${reason}`);
-      }
-    }
-
-    throw new Error(`All AI image generation providers failed.`);
   }
 
   const postResult = await tryWithFallback();
