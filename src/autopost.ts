@@ -839,52 +839,70 @@ async function generateAiCommentary(
     : description || title;
 
   const systemPrompt = isSpanish
-    ? `Eres un creador de contenido experto en LinkedIn. Escribes posts cortos, directos y virales en español que suenan completamente humanos. Nunca usas lenguaje corporativo ni plantillas obvias. Cada post que escribes es único y empieza diferente al anterior.`
-    : `You are a LinkedIn content expert. You write short, direct and viral posts in English that sound completely human. Never use corporate language or obvious templates. Every post you write starts differently — never use the same opening twice.`;
+    ? `Eres Ingeniero de Telecomunicaciones y Full Stack Developer con más de 5 años construyendo aplicaciones web escalables y seguras. Tu stack principal es React, Node.js, TypeScript y APIs REST. Trabajas con metodologías Ágiles, testing automatizado y CI/CD. Estás integrando activamente frameworks de GenAI y apuntás al sector fintech.
+
+En LinkedIn escribís como hablas: reflexiones reales de alguien que está en el campo, no contenido de marca. Cada post que escribís tiene estructura distinta y gancho diferente. Sin viñetas con emoji, sin lenguaje corporativo, sin preguntas genéricas al final.`
+    : `You are a Telecommunications Engineer and Full Stack Developer with 5+ years of experience building scalable and secure web applications. Your core stack is React, Node.js, TypeScript, and RESTful APIs. You work with Agile methodologies, automated testing, and CI/CD pipelines. You actively integrate GenAI frameworks and are targeting the fintech industry.
+
+On LinkedIn you write the way you talk: real reflections from someone in the field, not branded content. Every post has a different structure and a different hook. No emoji bullet points, no corporate language, no generic closing questions.`;
 
   const userPrompt = isSpanish
-    ? `Escribe un post de LinkedIn viral basado en el siguiente artículo.
+    ? `Escribe un post de LinkedIn basado en este artículo. Tiene que sonar como la opinión real de un ingeniero Full Stack con experiencia en fintech — alguien que leyó el artículo completo y tiene algo específico que decir.
 
 Nicho: ${config.niche}
-Título: ${title}
+Título del artículo: ${title}
 Contenido del artículo:
 ${articleContent}
 
 Enlace: ${link}
 
-Instrucciones estrictas:
-- Máximo 160 palabras en total
-- La PRIMERA línea debe ser un gancho único e impactante sacado directamente de la idea central del artículo. NO uses frases genéricas de inicio.
-- Segunda parte: explica la idea clave del artículo con tus propias palabras, como si se lo contaras a un colega
-- Tercera parte: tu opinión o perspectiva en 1-2 frases
-- Cuarta línea: el enlace introducido de forma natural
-- Quinta parte: una conclusión de 1-2 frases que sintetice la idea clave del artículo — qué significa para alguien que trabaja en ${config.niche}. Que suene a reflexión personal, no a llamado a la acción.
-- En la ÚLTIMA LÍNEA, escribe EXACTAMENTE 4 hashtags relevantes al tema (ejemplo: #Tecnologia #Software). No escribas nada más después.
-- Tono: humano, conversacional, sin asteriscos, sin markdown
-- Párrafos cortos con línea en blanco entre ellos
-- PROHIBIDO empezar con: "${config.niche} is shifting", "This is reshaping", "Did you know", "Just read"
-- PROHIBIDO terminar con preguntas genéricas como: "¿Tú cómo lo ves?", "¿Qué opinas?", "¿Lo habías visto venir?"`
-    : `Write a viral LinkedIn post based on the following article.
+Estructura obligatoria (en este orden, separados por línea en blanco):
+
+1. GANCHO (1 línea): Una frase específica y directa surgida del argumento central del artículo. Sin emojis. Sin clickbait vago.
+
+2. RESEÑA DEL ARTÍCULO (3-5 líneas): Explica qué dice el artículo de verdad — su argumento principal, los puntos más concretos y relevantes, algún dato si lo hay. Como si se lo contaras a un colega técnico en un standup. No una copia del título reformulada.
+
+3. OPINIÓN PROPIA (2-3 líneas): Tu perspectiva como ingeniero Full Stack que trabaja en entornos fintech. Qué te parece acertado del artículo, qué matizarías o con qué no estás de acuerdo, cómo conecta esto con la realidad de proyectos reales o con el mercado laboral. Sé específico y técnico si aplica.
+
+4. ENLACE: En una frase corta, introducido de forma natural.
+
+5. CONCLUSIÓN (1-2 líneas): Una reflexión final con criterio — qué implica esto en la práctica para alguien del sector. Sin pregunta, sin llamado a la acción.
+
+6. HASHTAGS: En la ÚLTIMA LÍNEA, exactamente 4 hashtags relevantes al tema. Nada más después.
+
+Restricciones:
+- Entre 190 y 260 palabras en total
+- Sin asteriscos, sin markdown, sin emojis
+- PROHIBIDO empezar con: "Did you know", "Acabas de leer", "La IA está cambiando", "Este artículo"
+- PROHIBIDO terminar con preguntas como: "¿Tú cómo lo ves?", "¿Qué opinas?", "¿Comparte si crees que tu red debería verlo?"`
+    : `Write a LinkedIn post based on this article. It must read like a genuine opinion from a Full Stack Engineer with fintech experience — someone who actually read the full article and has something specific to say.
 
 Niche: ${config.niche}
-Title: ${title}
+Article title: ${title}
 Article content:
 ${articleContent}
 
 Link: ${link}
 
-Strict instructions:
-- Max 160 words total
-- The FIRST line must be a unique, punchy hook taken directly from the article's core idea. Do NOT use generic openers.
-- Second part: explain the key insight from the article in your own words, as if telling a colleague
-- Third part: your opinion or perspective in 1-2 sentences
-- Fourth line: include the link naturally
-- Fifth part: a 1-2 sentence conclusion that synthesizes the article's key takeaway — what it means for someone working in ${config.niche}. Sound like a personal reflection, not a call to action.
-- On the VERY LAST LINE, write EXACTLY 4 hashtags relevant to the topic (e.g. #Technology #Software). Do not add anything after them.
-- Tone: human, conversational, no asterisks, no markdown
-- Short paragraphs with a blank line between them
-- FORBIDDEN openers: "${config.niche} is shifting", "This is reshaping", "Did you know", "Just read", "Most people"
-- FORBIDDEN endings: generic questions like "What do you think?", "How will this shift your approach?", "Drop your take below"`;
+Required structure (in this order, separated by blank lines):
+
+1. HOOK (1 line): A specific, direct line drawn from the article's core argument. No emojis. No vague clickbait.
+
+2. ARTICLE REVIEW (3-5 lines): Explain what the article actually says — its main argument, the most concrete and relevant points, a specific data point if available. Write as if you're briefing a technical colleague in a standup. Not a rephrasing of the title.
+
+3. PERSONAL OPINION (2-3 lines): Your perspective as a Full Stack Engineer working in fintech environments. What you think the article gets right, what you'd push back on or nuance, how this connects to real project experience or the job market. Be specific — technical if relevant.
+
+4. LINK: In a short sentence, embedded naturally.
+
+5. CLOSING THOUGHT (1-2 lines): A final reflection with judgment — what this means in practice for someone in the field. No question, no call to action.
+
+6. HASHTAGS: On the VERY LAST LINE, exactly 4 hashtags relevant to the topic. Nothing after them.
+
+Constraints:
+- Between 190 and 260 words total
+- No asterisks, no markdown, no emojis
+- FORBIDDEN openers: "Did you know", "Just read", "This is reshaping", "Most people overlook"
+- FORBIDDEN endings: "What do you think?", "How will this shift your approach?", "Drop your take below", "Share if your network should see this"`;
 
   return callAiText(
     [
