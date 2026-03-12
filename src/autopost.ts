@@ -730,7 +730,7 @@ async function callGeminiText(
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: m.content }],
     })),
-    generationConfig: { maxOutputTokens: 900, temperature: 0.85 },
+    generationConfig: { maxOutputTokens: 1500, temperature: 0.85 },
   };
 
   if (systemMsg) {
@@ -809,7 +809,7 @@ async function callPollinationsText(
       body: JSON.stringify({
         model: "openai",
         messages,
-        max_tokens: 900,
+        max_tokens: 1500,
         temperature: 0.85,
       }),
       signal: controller.signal,
@@ -866,76 +866,56 @@ async function generateAiCommentary(
     : description || title;
 
   const systemPrompt = isSpanish
-    ? `Eres Taimir, ingeniero de telecomunicaciones con más de 5 años como Full Stack Developer especializado en React, Node.js, TypeScript, diseño de APIs REST, CI/CD y GenAI. Trabajas en el sector fintech y escribes en LinkedIn desde tu propia voz técnica y profesional. Tus posts suenan completamente humanos, nunca corporativos. Eres directo, sin relleno, y cuando opinas lo haces desde tu experiencia real construyendo sistemas escalables y seguros.`
-    : `You are Taimir, a Telecommunications Engineer with 5+ years as a Full Stack Developer specializing in React, Node.js, TypeScript, RESTful API design, CI/CD pipelines, and GenAI integration. You work in the fintech space. You write LinkedIn posts in your own technical and professional voice — direct, opinionated, and grounded in real experience building scalable, secure web applications. You never use corporate filler language. Your opinion is specific and technical, not generic.`;
+    ? `Eres Taimir, ingeniero de telecomunicaciones con más de 5 años estableciendo arquitecturas como Full Stack Developer especializado en React, Node.js, TypeScript, diseño de APIs REST, pipelines CI/CD y automatización con GenAI. Trabajas en el sector fintech.
+Escribes en LinkedIn artículos estructurados en formato de "ensayo técnico" profundo. Te consideras analítico y un tanto escéptico ante el marketing exagerado de la tecnología. Tu tono es 100% humano, no uses lenguaje corporativo ni robótico. Tú cuentas historias reales, analizas los pros y contras técnicos y siempre ofreces una perspectiva detallada, basada en tu experiencia de la vida real construyendo software escalable.`
+    : `You are Taimir, a Telecommunications Engineer and Full Stack Developer with 5+ years of experience architecting scalable systems using React, Node.js, TypeScript, RESTful APIs, CI/CD pipelines, and integrating GenAI. You work in the rigorous fintech environment.
+You write long-form, deeply analytical LinkedIn "technical essays". You are critical, slightly skeptical of over-hyped tech marketing, and highly pragmatic. You write in a 100% human, non-corporate tone. You tell real stories, dissect technical trade-offs, and always provide a detailed perspective grounded in your real-world experience building robust software.`;
 
   const userPrompt = isSpanish
-    ? `Escribe un post de LinkedIn basado en el siguiente artículo. Mínimo 300 palabras. Que suene totalmente tuyo.
+    ? `Escribe un post profundo y extenso para LinkedIn analizando el siguiente artículo. Debes escribir MÍNIMO 400 palabras. Tiene que sentirse como un ensayo de liderazgo de pensamiento o artículo de opinión escrito por un ingeniero senior.
 
-Título del artículo: ${title}
-Contenido:
-${articleContent}
-
+Artículo: ${title}
+Contenido: ${articleContent}
 Enlace: ${link}
 
-Estructura obligatoria — sigue este orden exacto:
+Es vital que el texto fluya de forma natural. NO USES etiquetas como "[Gancho]", "[Reseña]" o "[Opinión]" en tu respuesta. Redacta párrafos hilados entre sí.
 
-[GANCHO — 1 línea]
-Una frase de apertura directa e inesperada, sacada de la idea central del artículo. No empieces con tu nombre ni con "Acabo de leer". El gancho tiene que hacer que alguien quiera seguir leyendo.
+Flujo narrativo OBLIGATORIO:
+1. Una introducción contundente sobre un problema común de desarrollo/arquitectura que este artículo intenta resolver. Conecta desde tu experiencia humana en startups/fintech.
+2. Un análisis exhaustivo de qué propone exactamente el artículo (no resumas el título, entra en el detalle técnico, qué herramientas mencionan, qué enfoque toman).
+3. Tu crítica técnica profunda: ¿Es realista este enfoque? ¿Cuáles son los cuellos de botella en la vida real que el artículo no menciona (latencia, deuda técnica, CI/CD, seguridad, costos)? Relaciónalo estrictamente con desarrollo backend (Node/TS) o frontend (React) cuando aplique.
+4. Una conclusión en forma de predicción a futuro sobre hacia dónde va esta tecnología en el ámbito Fintech y las aplicaciones de nivel empresarial.
+5. Pasa un par de líneas en blanco y pon el enlace de forma aislada: ${link}
+6. Tras otra línea en blanco al final, pon EXACTAMENTE 4 hashtags relacionados al contenido técnico (nunca pongas hashtags de relleno).
 
-[RESEÑA REAL DEL ARTÍCULO — 150 a 200 palabras]
-Explica con detalle qué cuenta el artículo: los puntos concretos que desarrolla, los datos o argumentos que presenta, cómo llega a sus conclusiones. No parafrasees el título. Escribe como si le explicaras el artículo a un colega ingeniero que no lo leyó. Usa tus propias palabras. Párrafos cortos.
+Reglas de Formato:
+- EXTIÉNDETE. Si no llegas a 400 palabras, el post no sirve.
+- Usa párrafos cortos (2-4 líneas) para facilitar la lectura en móviles.
+- Cero asteriscos, negritas o emojis excesivos.
+- NUNCA uses etiquetas de encabezado de sección. Escribe el texto de corrido.
+- PROHIBIDO cerrar con preguntas genéricas (ej: "¿Qué opinan?"). Termina con un pensamiento reflexivo final.`
+    : `Write a deep, extensive LinkedIn post analyzing the following article. You must write AT LEAST 400 words. It needs to feel like a thought-leadership essay or op-ed written by a senior engineer.
 
-[OPINIÓN TÉCNICA PERSONAL — 80 a 100 palabras]
-Da tu opinión real como Full Stack Developer con foco en fintech. Qué te parece relevante o discutible desde tu experiencia construyendo APIs, pipelines CI/CD, sistemas con React/Node.js o integraciones GenAI. Sé específico — no digas "esto es importante", di por qué lo es para alguien que trabaja en sistemas reales.
-
-[ENLACE]
-Incluye el enlace de forma natural en una línea sola.
-
-[CIERRE — 1 a 2 frases]
-Una reflexión final que sintetice el valor del artículo. Sin pregunta al lector. Sin llamado a la acción.
-
-[HASHTAGS — ÚLTIMA LÍNEA]
-Escribe EXACTAMENTE 4 hashtags en una sola línea. Deben reflejar el tema específico de ESTE artículo: tecnologías, conceptos o términos del sector mencionados en el contenido. NO uses hashtags genéricos de perfil como #FullStack o #React a menos que el artículo sea específicamente sobre eso. Nada más después de los hashtags.
-
-Reglas de formato:
-- Sin asteriscos, sin markdown, sin negritas
-- Párrafos separados por línea en blanco
-- PROHIBIDO usar: "¿Tú cómo lo ves?", "¿Qué opinas?", "Comparte si", "¿Lo habías visto venir?", "el mercado se movió"
-- La ÚLTIMA LÍNEA debe contener SOLO los hashtags, sin otro texto en esa línea`
-    : `Write a LinkedIn post based on the following article. Minimum 300 words. It must sound entirely like you.
-
-Article title: ${title}
-Content:
-${articleContent}
-
+Article: ${title}
+Content: ${articleContent}
 Link: ${link}
 
-Mandatory structure — follow this exact order:
+It is critical that the text flows naturally. DO NOT print labels like "[Hook]", "[Review]", or "[Opinion]" in your response. Write well-connected paragraphs.
 
-[HOOK — 1 line]
-A direct, unexpected opening line rooted in the article's core idea. Do not start with your name or "I just read". The hook must make someone want to keep reading.
-
-[REAL ARTICLE REVIEW — 150 to 200 words]
-Explain in detail what the article covers: the specific points it develops, the data or arguments it presents, how it reaches its conclusions. Do not paraphrase the title. Write as if you're explaining the article to a fellow engineer who hasn't read it. Use your own words. Short paragraphs.
-
-[PERSONAL TECHNICAL OPINION — 80 to 100 words]
-Give your real opinion as a Full Stack Developer focused on fintech. What stands out or seems debatable from your experience building APIs, CI/CD pipelines, React/Node.js systems, or GenAI integrations. Be specific — don't say "this is important", say why it matters to someone building real systems.
-
-[LINK]
-Include the link naturally on its own line.
-
-[CLOSING — 1 to 2 sentences]
-A final reflection that synthesizes the article's value. No reader question. No call to action.
-
-[HASHTAGS — LAST LINE]
-Write EXACTLY 4 hashtags on a single line. They MUST reflect the specific topic of THIS article (technologies, concepts, or industry terms mentioned in the content). Do NOT use generic profile hashtags like #FullStack or #React unless the article is specifically about those. Nothing after the hashtags.
+MANDATORY narrative flow:
+1. A punchy introduction focusing on a common architecture/development pain point that this article tries to address. Connect it to human, real-world startup/fintech struggles.
+2. A comprehensive breakdown of what the article actually proposes (do not just rehash the title; dive into the technical details, the tools mentioned, the specific approach).
+3. Your deep technical critique: Is this approach realistic? What are the real-world bottlenecks the article conveniently ignores (latency, tech debt, CI/CD friction, security, costs)? Tie it strictly to backend (Node/TS) or frontend (React) constraints where applicable.
+4. A conclusive prediction about where this specific technology or trend is heading in the Fintech and enterprise software landscape.
+5. Create a couple of blank lines and insert the link in isolation: ${link}
+6. After one final blank line, write EXACTLY 4 hashtags strictly related to the specific technical content.
 
 Formatting rules:
-- No asterisks, no markdown, no bold text
-- Paragraphs separated by blank lines
-- FORBIDDEN endings: "What do you think?", "How will this shift your approach?", "Drop your take", "Share if", "What's your read on this?"
-- The LAST LINE must be ONLY hashtags, no other text on that line`;
+- EXPAND. If you fall under 400 words, the post fails.
+- Use short paragraphs (2-4 lines) for mobile readability.
+- Zero asterisks, bold text, or excessive emojis.
+- NEVER use section header labels. Write seamless flowing text.
+- FORBIDDEN endings: never end with a generic question like "What do you think?". End on a strong, reflective final thought/takeaway.`;
 
   return callAiText(
     [
