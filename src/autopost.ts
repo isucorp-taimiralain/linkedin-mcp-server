@@ -869,12 +869,13 @@ Incluye el enlace de forma natural en una línea sola.
 Una reflexión final que sintetice el valor del artículo. Sin pregunta al lector. Sin llamado a la acción.
 
 [HASHTAGS — ÚLTIMA LÍNEA]
-Escribe EXACTAMENTE 4 hashtags relevantes al tema. Nada más después de los hashtags.
+Escribe EXACTAMENTE 4 hashtags en una sola línea. Deben reflejar el tema específico de ESTE artículo: tecnologías, conceptos o términos del sector mencionados en el contenido. NO uses hashtags genéricos de perfil como #FullStack o #React a menos que el artículo sea específicamente sobre eso. Nada más después de los hashtags.
 
 Reglas de formato:
 - Sin asteriscos, sin markdown, sin negritas
 - Párrafos separados por línea en blanco
-- PROHIBIDO usar: "¿Tú cómo lo ves?", "¿Qué opinas?", "Comparte si", "¿Lo habías visto venir?", "el mercado se movió"`
+- PROHIBIDO usar: "¿Tú cómo lo ves?", "¿Qué opinas?", "Comparte si", "¿Lo habías visto venir?", "el mercado se movió"
+- La ÚLTIMA LÍNEA debe contener SOLO los hashtags, sin otro texto en esa línea`
     : `Write a LinkedIn post based on the following article. Minimum 300 words. It must sound entirely like you.
 
 Article title: ${title}
@@ -901,12 +902,13 @@ Include the link naturally on its own line.
 A final reflection that synthesizes the article's value. No reader question. No call to action.
 
 [HASHTAGS — LAST LINE]
-Write EXACTLY 4 hashtags relevant to the topic. Nothing after the hashtags.
+Write EXACTLY 4 hashtags on a single line. They MUST reflect the specific topic of THIS article (technologies, concepts, or industry terms mentioned in the content). Do NOT use generic profile hashtags like #FullStack or #React unless the article is specifically about those. Nothing after the hashtags.
 
 Formatting rules:
 - No asterisks, no markdown, no bold text
 - Paragraphs separated by blank lines
-- FORBIDDEN endings: "What do you think?", "How will this shift your approach?", "Drop your take", "Share if", "What's your read on this?"`;
+- FORBIDDEN endings: "What do you think?", "How will this shift your approach?", "Drop your take", "Share if", "What's your read on this?"
+- The LAST LINE must be ONLY hashtags, no other text on that line`;
 
   return callAiText(
     [
@@ -958,18 +960,45 @@ export async function prepareAutoPost(): Promise<PreparedAutoPost> {
 
   // Extract hashtags from the end of the AI commentary
   let dynamicHashtags: string[] | undefined = undefined;
-  const hashtagRegex = /(?:\s*#\w+)+[^a-zA-Z0-9]*$/;
-  const match = commentary.match(hashtagRegex);
+
+  // Match a line that contains only hashtags (the last such line in the post)
+  const hashtagLineRegex = /\n(\s*(?:#\w+\s*){2,})\s*$/;
+  const match = commentary.match(hashtagLineRegex);
   if (match) {
-    const tagsText = match[0];
+    const tagsText = match[1];
     dynamicHashtags = tagsText
-      .split(/[^#\w]+/)
-      .filter((t) => t.startsWith("#") || t.length > 1)
-      .map((t) => t.replace("#", ""));
-    commentary = commentary.replace(hashtagRegex, "").trim();
-    console.error(`  Extracted dynamic hashtags: ${dynamicHashtags.join(", ")}`);
+      .trim()
+      .split(/\s+/)
+      .filter((t) => t.startsWith("#") && t.length > 1)
+      .map((t) => t.slice(1));
+    if (dynamicHashtags.length >= 2) {
+      commentary = commentary.replace(hashtagLineRegex, "").trim();
+      console.error(`  Extracted dynamic hashtags: ${dynamicHashtags.join(", ")}`);
+    } else {
+      dynamicHashtags = undefined;
+      console.error("  Hashtag line found but too few tags, using article fallback.");
+    }
   } else {
-    console.error("  No dynamic hashtags found at the end of AI commentary.");
+    console.error("  No hashtag line found at end of AI commentary, using article fallback.");
+  }
+
+  // Fallback: derive hashtags from the article keyword + title words (NOT config defaults)
+  if (!dynamicHashtags || dynamicHashtags.length === 0) {
+    const articleTags = [
+      bestCandidate.keyword
+        .split(/\s+/)
+        .filter((w) => w.length > 3)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .slice(0, 2),
+      bestCandidate.title
+        .replace(/[^a-zA-Z\s]/g, " ")
+        .split(/\s+/)
+        .filter((w) => w.length > 4 && !/^(this|that|with|from|into|over|after|before|about|their|there|these|those|which|where|would|could|should|have|been|just|will|also)$/i.test(w))
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .slice(0, 2),
+    ].flat().slice(0, 4);
+    dynamicHashtags = [...new Set(articleTags)].slice(0, 4);
+    console.error(`  Article-derived hashtags: ${dynamicHashtags.join(", ")}`);
   }
 
   return {
