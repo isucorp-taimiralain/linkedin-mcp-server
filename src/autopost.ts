@@ -713,14 +713,14 @@ interface ChatMessage {
  * Calls Google Gemini 2.0 Flash for text generation.
  * Free tier: 1,500 requests/day, 15 requests/minute.
  */
+const GEMINI_TEXT_MAX_RETRIES = 3;
+const GEMINI_TEXT_RETRY_BASE_MS = 8000; // 8s base, doubles each attempt
+
 async function callGeminiText(
   messages: ChatMessage[],
   googleApiKey: string,
   timeoutMs = 30000
 ): Promise<string> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
   // Convert chat format to Gemini's content format
   const systemMsg = messages.find((m) => m.role === "system");
   const userMsgs = messages.filter((m) => m.role !== "system");
@@ -737,32 +737,59 @@ async function callGeminiText(
     body.systemInstruction = { parts: [{ text: systemMsg.content }] };
   }
 
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(googleApiKey)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: controller.signal,
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt <= GEMINI_TEXT_MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(googleApiKey)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        }
+      );
+
+      if (response.status === 429) {
+        // Honor Retry-After header if present, otherwise use exponential backoff
+        const retryAfterRaw = response.headers.get("Retry-After");
+        const retryAfterMs = retryAfterRaw
+          ? Number(retryAfterRaw) * 1000
+          : GEMINI_TEXT_RETRY_BASE_MS * Math.pow(2, attempt);
+        if (attempt < GEMINI_TEXT_MAX_RETRIES) {
+          console.error(`  Gemini 429 rate limit — waiting ${Math.round(retryAfterMs / 1000)}s before retry (attempt ${attempt + 1}/${GEMINI_TEXT_MAX_RETRIES})…`);
+          await new Promise((resolve) => setTimeout(resolve, retryAfterMs));
+          continue;
+        }
+        throw new Error(`Gemini text API 429: rate limit exceeded after ${GEMINI_TEXT_MAX_RETRIES} retries`);
       }
-    );
 
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`Gemini text API ${response.status}: ${err.slice(0, 120)}`);
-    }
+      if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`Gemini text API ${response.status}: ${err.slice(0, 120)}`);
+      }
 
-    interface GeminiTextResponse {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      interface GeminiTextResponse {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      }
+      const data = (await response.json()) as GeminiTextResponse;
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      if (!text) throw new Error("Gemini returned empty text");
+      return text;
+    } catch (err) {
+      lastError = err;
+      // Only retry on rate limit (handled above); propagate other errors immediately
+      if (err instanceof Error && !err.message.includes("429")) throw err;
+    } finally {
+      clearTimeout(timer);
     }
-    const data = (await response.json()) as GeminiTextResponse;
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    if (!text) throw new Error("Gemini returned empty text");
-    return text;
-  } finally {
-    clearTimeout(timer);
   }
+
+  throw lastError ?? new Error("Gemini text: unknown error");
 }
 
 /**

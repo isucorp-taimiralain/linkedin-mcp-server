@@ -403,6 +403,8 @@ export class LinkedInClient {
       error?: { message?: string };
     }
 
+    const GEMINI_IMG_MAX_RETRIES = 2;
+    const GEMINI_IMG_RETRY_BASE_MS = 10000;
     let lastError: unknown = null;
 
     for (const model of models) {
@@ -410,7 +412,9 @@ export class LinkedInClient {
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent` +
         `?key=${encodeURIComponent(googleApiKey)}`;
 
-      try {
+      let modelSuccess = false;
+      for (let attempt = 0; attempt <= GEMINI_IMG_MAX_RETRIES && !modelSuccess; attempt++) {
+        try {
         const response = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -421,6 +425,19 @@ export class LinkedInClient {
             },
           }),
         });
+
+        if (response.status === 429) {
+          const retryAfterRaw = response.headers.get("Retry-After");
+          const waitMs = retryAfterRaw
+            ? Number(retryAfterRaw) * 1000
+            : GEMINI_IMG_RETRY_BASE_MS * Math.pow(2, attempt);
+          if (attempt < GEMINI_IMG_MAX_RETRIES) {
+            console.error(`  Gemini image 429 — waiting ${Math.round(waitMs / 1000)}s (attempt ${attempt + 1}/${GEMINI_IMG_MAX_RETRIES})…`);
+            await new Promise((resolve) => setTimeout(resolve, waitMs));
+            continue;
+          }
+          throw new Error(`Google Gemini image 429: rate limit after ${GEMINI_IMG_MAX_RETRIES} retries`);
+        }
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -452,10 +469,16 @@ export class LinkedInClient {
           contentType,
           source: `Google Gemini image generation (${model}) — prompt: "${normalizedPrompt}"`,
         };
-      } catch (error) {
-        lastError = error;
-      }
-    }
+        } catch (error) {
+          lastError = error;
+          // Non-429 errors: skip to next model immediately
+          if (!(error instanceof Error && error.message.includes("429"))) {
+            modelSuccess = false;
+            break;
+          }
+        }
+      } // end retry loop
+    } // end model loop
 
     if (lastError instanceof Error) {
       throw new Error(`Google image generation failed: ${lastError.message}`);
