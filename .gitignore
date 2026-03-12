@@ -2,9 +2,16 @@ node_modules/
 dist/
 *.log
 .env
+.env.local
 .DS_Store
 
-# LinkedIn credentials - never commit these
-~/.linkedin-mcp/
+# LinkedIn credentials — NEVER commit these files
 credentials.json
 token.json
+
+# Autopost runtime files — contain personal data
+automation-history.json
+autopost.log
+
+# OS files
+Thumbs.db
