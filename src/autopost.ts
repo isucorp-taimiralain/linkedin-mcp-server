@@ -449,69 +449,61 @@ function buildCommentaryInSpanish(candidate: NewsCandidate, _config: ValidAutoPo
   const titleWords = title.split(" ").slice(0, 6).join(" ");
 
   const templates: string[] = [
-    // 1 — Dato + opinion directa
+    // 1 — Dato + conclusión directa
     [
       `"${titleWords}…" — esto me parece importante.`,
       "",
       insight,
       "",
-      `Quien entiende esto antes lleva ventaja real.`,
-      "",
       `Lo leí aquí → ${link}`,
       "",
-      `¿Tú cómo lo ves?`,
+      `Mi conclusión: quien entiende esto antes no solo lleva ventaja — define el ritmo al que los demás tienen que adaptarse.`,
     ].join("\n"),
 
-    // 2 — Dato concreto + reflexión
+    // 2 — Dato concreto + síntesis
     [
       `Acabo de leer algo que cambia cómo veo el sector:`,
       "",
       insight,
       "",
-      `Mi lectura: el mercado ya se movió. La pregunta es si tú también.`,
-      "",
       `Artículo completo: ${link}`,
       "",
-      `¿Cuánto coincide con lo que ves en tu día a día?`,
+      `Lo que me quedo: no es una tendencia futura. Ya está pasando. Y la brecha entre los que se adaptan y los que esperan se agranda cada mes.`,
     ].join("\n"),
 
-    // 3 — Tres puntos clave
+    // 3 — Tres puntos clave + conclusión
     [
       `Este artículo lo resume en una idea que vale la pena entender:`,
       "",
       `→ ${insight}`,
       `→ El timing importa: quien actúa ahora lleva ventaja.`,
-      `→ Ignorarlo tiene un costo real.`,
+      `→ Ignorarlo tiene un costo real, aunque tarde en verse.`,
       "",
       `Lee el artículo: ${link}`,
       "",
-      `¿Cuál de estas ideas resuena más contigo?`,
+      `En resumen: los cambios de fondo siempre importan más que los titulares. Vale entender la mecánica, no solo el resultado.`,
     ].join("\n"),
 
-    // 4 — Storytelling
+    // 4 — Storytelling + reflexión
     [
       `Hoy leí algo que me hizo repensar cómo funciona esto:`,
       "",
       insight,
       "",
-      `La información más útil no siempre llega cuando la buscas. Pero cuando llega, vale actuar.`,
-      "",
       `→ ${link}`,
       "",
-      `¿Lo habías visto venir?`,
+      `Lo que más me llama la atención: la gente que mueve temprano no tiene mejores predicciones. Solo actúa sobre señales que otros ignoran.`,
     ].join("\n"),
 
-    // 5 — Urgencia real
+    // 5 — Urgencia real + conclusión
     [
       `Esto está pasando ahora mismo, y vale leerlo:`,
       "",
       insight,
       "",
-      `No lo comparto por generar ruido. Lo comparto porque las personas que lo ven primero se posicionan mejor.`,
-      "",
       `Más contexto: ${link}`,
       "",
-      `¿Tu red debería verlo?`,
+      `Por qué lo comparto: no para generar ruido, sino porque entender el mecanismo detrás de esto vale más que cualquier titular.`,
     ].join("\n"),
   ];
 
@@ -526,33 +518,29 @@ function buildCommentaryInEnglish(candidate: NewsCandidate, _config: ValidAutoPo
   const titleHook = title.split(" ").slice(0, 7).join(" ");
 
   const templates: string[] = [
-    // 1 — Article-specific hook
+    // 1 — Article-specific hook + conclusion
     [
       `"${titleHook}…" — worth reading.`,
       "",
       insight,
       "",
-      `My take: the people who spot this early adapt faster. That gap compounds.`,
-      "",
       `Full article → ${link}`,
       "",
-      `What's your read on this?`,
+      `The takeaway: the people who spot this early adapt faster. That gap compounds over time — and it's already happening.`,
     ].join("\n"),
 
-    // 2 — Already in motion
+    // 2 — Already in motion + conclusion
     [
       `I just read something that changed how I see this space:`,
       "",
       insight,
       "",
-      `The part that gets me: this isn't a prediction. It's already in motion.`,
-      "",
       `Source: ${link}`,
       "",
-      `Drop your take below 👇`,
+      `What stands out to me: this isn't a prediction anymore. It's already in motion, and the window to adapt is narrowing.`,
     ].join("\n"),
 
-    // 3 — Three takeaways
+    // 3 — Three takeaways + conclusion
     [
       `This article in 3 ideas:`,
       "",
@@ -562,33 +550,29 @@ function buildCommentaryInEnglish(candidate: NewsCandidate, _config: ValidAutoPo
       "",
       `Read the full thing: ${link}`,
       "",
-      `Which of these hits closest to home?`,
+      `Bottom line: the shift is already underway. The gap between those who adapt and those who don't is widening.`,
     ].join("\n"),
 
-    // 4 — Market moved
+    // 4 — Market moved + conclusion
     [
       `Something worth knowing happened in this space:`,
       "",
       insight,
       "",
-      `The market moved. The only question left is whether you're moving with it.`,
-      "",
       `Full piece: ${link}`,
       "",
-      `How much does this match your daily reality?`,
+      `My read: the fundamentals here matter more than the headlines. Worth understanding the underlying mechanics, not just the outcome.`,
     ].join("\n"),
 
-    // 5 — Position early
+    // 5 — Position early + conclusion
     [
       `I keep seeing this pattern repeat:`,
       "",
       insight,
       "",
-      `The people I see winning: they don't wait to react. They position early.`,
-      "",
       `More here: ${link}`,
       "",
-      `Share if your network should see this.`,
+      `The through-line: the people who move early don't have better predictions — they just act on signals others ignore.`,
     ].join("\n"),
   ];
 
@@ -873,12 +857,13 @@ Instrucciones estrictas:
 - La PRIMERA línea debe ser un gancho único e impactante sacado directamente de la idea central del artículo. NO uses frases genéricas de inicio.
 - Segunda parte: explica la idea clave del artículo con tus propias palabras, como si se lo contaras a un colega
 - Tercera parte: tu opinión o perspectiva en 1-2 frases
-- Cuarta línea: el enlace naturalemente introducido
-- Quinta línea: una pregunta directa que invite a comentar
+- Cuarta línea: el enlace introducido de forma natural
+- Quinta parte: una conclusión de 1-2 frases que sintetice la idea clave del artículo — qué significa para alguien que trabaja en ${config.niche}. Que suene a reflexión personal, no a llamado a la acción.
 - En la ÚLTIMA LÍNEA, escribe EXACTAMENTE 4 hashtags relevantes al tema (ejemplo: #Tecnologia #Software). No escribas nada más después.
 - Tono: humano, conversacional, sin asteriscos, sin markdown
 - Párrafos cortos con línea en blanco entre ellos
-- PROHIBIDO empezar con: "${config.niche} is shifting", "This is reshaping", "Did you know", "Just read"`
+- PROHIBIDO empezar con: "${config.niche} is shifting", "This is reshaping", "Did you know", "Just read"
+- PROHIBIDO terminar con preguntas genéricas como: "¿Tú cómo lo ves?", "¿Qué opinas?", "¿Lo habías visto venir?"`
     : `Write a viral LinkedIn post based on the following article.
 
 Niche: ${config.niche}
@@ -894,11 +879,12 @@ Strict instructions:
 - Second part: explain the key insight from the article in your own words, as if telling a colleague
 - Third part: your opinion or perspective in 1-2 sentences
 - Fourth line: include the link naturally
-- Fifth line: a direct question to spark replies
+- Fifth part: a 1-2 sentence conclusion that synthesizes the article's key takeaway — what it means for someone working in ${config.niche}. Sound like a personal reflection, not a call to action.
 - On the VERY LAST LINE, write EXACTLY 4 hashtags relevant to the topic (e.g. #Technology #Software). Do not add anything after them.
 - Tone: human, conversational, no asterisks, no markdown
 - Short paragraphs with a blank line between them
-- FORBIDDEN openers: "${config.niche} is shifting", "This is reshaping", "Did you know", "Just read", "Most people"`;
+- FORBIDDEN openers: "${config.niche} is shifting", "This is reshaping", "Did you know", "Just read", "Most people"
+- FORBIDDEN endings: generic questions like "What do you think?", "How will this shift your approach?", "Drop your take below"`;
 
   return callAiText(
     [
